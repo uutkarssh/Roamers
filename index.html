@@ -34,5 +34,6 @@
     <section id="resultsScreen" class="screen"><div class="results"><p class="eyebrow">ROUND OVER</p><h1 id="resultTitle">Roamers Survive!</h1><p id="resultSub"></p><div id="timeline" class="timeline"></div><div class="result-actions"><button id="playAgain" class="primary">Play Again</button><button id="returnLobby" class="secondary">Return to Lobby</button></div><div class="result-chat chat"><div class="chat-head"><strong>Post-game comments</strong></div><div id="resultChatMessages" class="messages"></div><form id="resultChatForm"><input id="resultChatInput" maxlength="160" placeholder="React to the round…"><button>➤</button></form></div></div></section>
   </main>
 </div>
-<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script><script src="app.js"></script>
+<!-- Served by the same Socket.IO server: no external CDN is required. -->
+<script src="/socket.io/socket.io.js"></script><script src="app.js"></script>
 </body></html>
