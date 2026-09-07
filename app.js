@@ -7,13 +7,48 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPro
 $('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();deferredPrompt=null;$('#installBtn').classList.add('hidden')}};
 $('#showJoinBtn').onclick=()=>$('#codeBox').classList.remove('hidden');
 function ensureName(){const n=nameEl.value.trim();if(!n){nameEl.focus();return null}localStorage.setItem('roamers-name',n);return n}
-function connect(){if(socket)return socket; if(typeof io==='undefined'){alert('Multiplayer server is not connected yet. The UI is ready; add the Node/Socket.IO server to enable live rooms.');return null}socket=io({reconnection:true,reconnectionAttempts:Infinity});$('#connection').textContent='● Connecting';socket.on('connect',()=>{$('#connection').textContent='● Online';$('#connection').className='status online';if(room&&me)socket.emit('room:rejoin',{code:room.code,playerId:me.id})});socket.on('disconnect',()=>{$('#connection').textContent='● Offline';$('#connection').className='status offline'});bindSocket();return socket}
-function bindSocket(){socket.on('room:state',state=>applyState(state));socket.on('room:created',state=>applyState(state));socket.on('room:joined',state=>applyState(state));socket.on('game:roleAssigned',r=>{role=r.toUpperCase();$('#roleBadge').textContent=role;$('#roleBadge').style.background=role==='HUNTER'?'#9f3e36':'#24533f'});socket.on('game:phaseChanged',d=>setPhase(d.phase,d.endsAt));socket.on('player:positionUpdate',list=>{(Array.isArray(list)?list:Object.values(list)).forEach(p=>{positions.set(p.id,{x:p.x,y:p.y,tx:p.x,ty:p.y})})});socket.on('player:aimUpdate',d=>{aim={x:d.endX-d.startX,y:d.endY-d.startY};const l=Math.hypot(aim.x,aim.y)||1;aim.x/=l;aim.y/=l});socket.on('player:eliminated',id=>{const p=players.get(id);if(p)p.status='eliminated';renderPlayers()});socket.on('chat:message',m=>{chatLog.push(m);if(chatLog.length>200)chatLog.shift();renderChat()});socket.on('game:ended',showResults)}
-function applyState(s){room=s.room||s;me=s.me||me;if(s.players)players=new Map(s.players.map(p=>[p.id,p]));if(s.chatLog)chatLog=s.chatLog;$('#roomCode').textContent=room.code||'—';renderPlayers();renderChat();show('lobbyScreen');}
+function setConnection(text,online=false){$('#connection').textContent=`● ${text}`;$('#connection').className=`status ${online?'online':'offline'}`}
+function connect(){
+  if(socket)return socket;
+  if(typeof io==='undefined'){setConnection('Offline');alert('The multiplayer client could not load. Please refresh after the new deployment finishes.');return null}
+  socket=io({reconnection:true,reconnectionAttempts:Infinity,reconnectionDelay:500,reconnectionDelayMax:5000,timeout:10000});
+  setConnection('Connecting');
+  socket.on('connect',()=>{
+    setConnection('Online',true);
+    if(room&&me)socket.emit('room:rejoin',{code:room.code,playerId:me.id});
+  });
+  socket.on('connect_error',()=>setConnection('Offline'));
+  socket.on('disconnect',()=>setConnection('Offline'));
+  bindSocket();
+  return socket;
+}
+function bindSocket(){
+  socket.on('room:state',state=>applyState(state));
+  socket.on('room:created',state=>applyState(state));
+  socket.on('room:joined',state=>applyState(state));
+  socket.on('room:error',e=>alert(e?.message||'Unable to join that room.'));
+  socket.on('game:roleAssigned',r=>{role=r.toUpperCase();$('#roleBadge').textContent=role;$('#roleBadge').style.background=role==='HUNTER'?'#9f3e36':'#24533f'});
+  socket.on('game:phaseChanged',d=>setPhase(d.phase,d.endsAt));
+  socket.on('player:positionUpdate',list=>{(Array.isArray(list)?list:Object.values(list)).forEach(p=>{positions.set(p.id,{x:p.x,y:p.y,tx:p.x,ty:p.y});if(p.id===me?.id)localPos={x:p.x,y:p.y}})});
+  socket.on('player:aimUpdate',d=>{aim={x:d.endX-d.startX,y:d.endY-d.startY};const l=Math.hypot(aim.x,aim.y)||1;aim.x/=l;aim.y/=l});
+  socket.on('player:eliminated',id=>{const p=players.get(id);if(p)p.status='eliminated';renderPlayers()});
+  socket.on('chat:message',m=>{chatLog.push(m);if(chatLog.length>200)chatLog.shift();renderChat()});
+  socket.on('game:ended',showResults);
+}
+function applyState(s){
+  room=s.room||s;
+  if(s.me){me=s.me;localStorage.setItem('roamers-player-id',me.id);}
+  if(s.players)players=new Map(s.players.map(p=>[p.id,p]));
+  if(s.chatLog)chatLog=s.chatLog;
+  $('#roomCode').textContent=room.code||'—';
+  renderPlayers();renderChat();
+  if(room.phase&&room.phase!=='lobby')phase=room.phase;
+  show('lobbyScreen');
+}
 $('#createBtn').onclick=()=>{const n=ensureName();if(!n)return;const s=connect();if(s)s.emit('room:create',{name:n,playerId:localStorage.getItem('roamers-player-id')||null})};
 $('#joinBtn').onclick=()=>{const n=ensureName(),code=$('#codeInput').value.trim().toUpperCase();if(!n||!code)return;const s=connect();if(s)s.emit('room:join',{code,name:n,playerId:localStorage.getItem('roamers-player-id')||null})};
 $('#copyCode').onclick=async()=>{if(room?.code)await navigator.clipboard?.writeText(room.code);$('#copyCode').textContent='Copied!';setTimeout(()=>$('#copyCode').textContent='Copy code',1200)};
-function renderPlayers(){const el=$('#players');el.innerHTML=[...players.values()].map((p,i)=>`<div class="player"><div class="avatar">${sprites[p.spriteIndex??i%sprites.length]}</div><strong>${esc(p.name)}</strong>${p.id===room?.hostId?'<small>HOST</small>':''}</div>`).join('');$('#startHint').textContent=players.size<3?'Need at least 3 players to start.':`${players.size} players ready.`;}
+function renderPlayers(){const el=$('#players');el.innerHTML=[...players.values()].map((p,i)=>`<div class="player"><div class="avatar">${sprites[p.spriteIndex??i%sprites.length]}</div><strong>${esc(p.name)}</strong>${p.id===room?.hostId?'<small>HOST</small>':''}${p.status==='eliminated'?'<small>OUT</small>':''}</div>`).join('');$('#startHint').textContent=players.size<3?'Need at least 3 players to start.':`${players.size} players ready.`;}
 function renderChat(){['chatMessages','gameChatMessages','resultChatMessages'].forEach(id=>{const el=$('#'+id);if(!el)return;el.innerHTML=chatLog.map(m=>`<div class="message"><b>${esc(m.name||'Player')}:</b> ${esc(m.text)}</div>`).join('');el.scrollTop=el.scrollHeight})}
 function sendChat(input){const text=input.value.trim();if(!text||Date.now()-lastChat<1500)return;lastChat=Date.now();input.value='';if(socket?.connected)socket.emit('chat:message',{text});else{chatLog.push({name:me?.name||nameEl.value,text});renderChat()}}
 [['chatForm','chatInput'],['gameChatForm','gameChatInput'],['resultChatForm','resultChatInput']].forEach(([f,i])=>$('#'+f).onsubmit=e=>{e.preventDefault();sendChat($('#'+i))});
