@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 192" width="384" height="192" shape-rendering="crispEdges">
+<defs>
+<g id="c">
+<rect x="13" y="88" width="38" height="4" fill="#744a3b"/>
+<rect x="18" y="69" width="11" height="17" fill="var(--pants)"/><rect x="35" y="69" width="11" height="17" fill="var(--pants)"/>
+<rect x="16" y="84" width="15" height="5" fill="#202020"/><rect x="33" y="84" width="15" height="5" fill="#202020"/>
+<rect x="15" y="48" width="34" height="25" fill="#202020"/><rect x="18" y="50" width="28" height="20" fill="var(--shirt)"/>
+<rect x="11" y="52" width="7" height="18" fill="#202020"/><rect x="46" y="52" width="7" height="18" fill="#202020"/><rect x="12" y="55" width="6" height="11" fill="#f0a080"/><rect x="46" y="55" width="6" height="11" fill="#f0a080"/>
+<rect x="27" y="42" width="10" height="9" fill="#f0a080"/><rect x="17" y="21" width="30" height="25" fill="#202020"/><rect x="20" y="23" width="24" height="21" fill="#f0a080"/>
+<rect x="14" y="29" width="6" height="9" fill="#f0a080"/><rect x="44" y="29" width="6" height="9" fill="#f0a080"/>
+<rect x="25" y="33" width="4" height="5" fill="#202020"/><rect x="36" y="33" width="4" height="5" fill="#202020"/><rect x="29" y="40" width="7" height="3" fill="#202020"/>
+<rect x="22" y="26" width="5" height="2" fill="#fff"/>
+<rect x="17" y="28" width="5" height="11" fill="var(--hair)"/><rect x="42" y="28" width="5" height="10" fill="var(--hair)"/><rect x="14" y="20" width="36" height="8" fill="var(--hair)"/><rect x="18" y="15" width="28" height="7" fill="var(--hair)"/>
+<rect x="28" y="52" width="8" height="4" fill="var(--accent)"/>
+</g></defs>
+<g style="--hair:#e5242a;--shirt:#f2f2ef;--pants:#27304f;--accent:#e5242a"><use href="#c" x="0" y="0"/></g>
+<g transform="translate(64 0)" style="--hair:#f2b632;--shirt:#183a4c;--pants:#176b8c;--accent:#f2b632"><use href="#c"/></g>
+<g transform="translate(128 0)" style="--hair:#a72a21;--shirt:#d5a23a;--pants:#1d3151;--accent:#a72a21"><use href="#c"/></g>
+<g transform="translate(192 0)" style="--hair:#5b4bc4;--shirt:#27445f;--pants:#1b2c55;--accent:#5b4bc4"><use href="#c"/></g>
+<g transform="translate(256 0)" style="--hair:#39b514;--shirt:#2c3134;--pants:#15191a;--accent:#39b514"><use href="#c"/></g>
+<g transform="translate(320 0)" style="--hair:#202124;--shirt:#c82d2d;--pants:#d7b56c;--accent:#ffd54a"><use href="#c"/></g>
+<g transform="translate(0 96)" style="--hair:#20203a;--shirt:#33275f;--pants:#1e243e;--accent:#67d44d"><use href="#c"/></g>
+<g transform="translate(64 96)" style="--hair:#c43b16;--shirt:#d6c19b;--pants:#6f78a0;--accent:#c43b16"><use href="#c"/></g>
+<g transform="translate(128 96)" style="--hair:#343942;--shirt:#6c2e72;--pants:#1e252f;--accent:#d33b3b"><use href="#c"/></g>
+<g transform="translate(192 96)" style="--hair:#c62dd2;--shirt:#6b6b75;--pants:#30343a;--accent:#c62dd2"><use href="#c"/></g>
+<g transform="translate(256 96)" style="--hair:#181818;--shirt:#f1e21b;--pants:#4a7a1d;--accent:#f1e21b"><use href="#c"/></g>
+<g transform="translate(320 96)" style="--hair:#1c2d63;--shirt:#202b36;--pants:#0d1521;--accent:#8ea7ff"><use href="#c"/></g>
+</svg>
