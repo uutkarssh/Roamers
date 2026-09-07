@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Roamers — discover places, build trips, and roam smarter." />
+  <title>Roamers — Discover your next escape</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="nav shell">
+    <a class="brand" href="#top" aria-label="Roamers home"><span>R</span> Roamers</a>
+    <nav>
+      <a href="#discover">Discover</a>
+      <a href="#trips">My Trips</a>
+      <a href="#about">About</a>
+    </nav>
+    <button class="ghost" id="randomBtn">Surprise me</button>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="hero-copy">
+        <p class="eyebrow">GO SOMEWHERE NEW</p>
+        <h1>Find a place worth <em>roaming.</em></h1>
+        <p class="lede">Discover memorable destinations, save your favorites, and start planning your next adventure.</p>
+        <div class="search" role="search">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="Search a city, country, or vibe..." autocomplete="off" />
+          <button id="searchBtn">Explore</button>
+        </div>
+      </div>
+      <div class="hero-card" aria-label="Featured destination">
+        <div class="hero-image" role="img" aria-label="Mountain lake landscape"></div>
+        <div class="hero-card-content"><span>FEATURED ESCAPE</span><strong>Himalayan mornings</strong><small>Uttarakhand · India</small></div>
+      </div>
+    </section>
+
+    <section class="shell section" id="discover">
+      <div class="section-head"><div><p class="eyebrow">EXPLORE</p><h2>Places for your next story</h2></div><span id="resultCount" class="muted"></span></div>
+      <div class="filters" role="group" aria-label="Destination filters">
+        <button class="filter active" data-filter="all">All</button>
+        <button class="filter" data-filter="mountains">Mountains</button>
+        <button class="filter" data-filter="beaches">Beaches</button>
+        <button class="filter" data-filter="cities">Cities</button>
+        <button class="filter" data-filter="nature">Nature</button>
+      </div>
+      <div class="grid" id="destinationGrid"></div>
+      <p class="empty" id="emptyState" hidden>No destinations match that search. Try another place or vibe.</p>
+    </section>
+
+    <section class="shell planner" id="trips">
+      <div><p class="eyebrow">YOUR ROAM</p><h2>Build a trip as you discover.</h2><p>Save destinations now. Turn them into an itinerary when you're ready.</p></div>
+      <div class="saved" id="savedList"><span class="muted">Your saved places will appear here.</span></div>
+    </section>
+  </main>
+
+  <footer class="shell footer" id="about"><strong>Roamers</strong><span>Made for curious people.</span><span>© 2026</span></footer>
+  <script src="app.js"></script>
+</body>
+</html>
