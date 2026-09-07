@@ -1,61 +1,38 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Roamers — discover places, build trips, and roam smarter." />
-  <title>Roamers — Discover your next escape</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#16372c"><meta name="description" content="Roamers — a live hide-and-seek party game.">
+  <link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css">
+  <title>Roamers</title>
 </head>
 <body>
-  <header class="nav shell">
-    <a class="brand" href="#top" aria-label="Roamers home"><span>R</span> Roamers</a>
-    <nav>
-      <a href="#discover">Discover</a>
-      <a href="#trips">My Trips</a>
-      <a href="#about">About</a>
-    </nav>
-    <button class="ghost" id="randomBtn">Surprise me</button>
-  </header>
+<div id="app">
+  <header class="topbar"><a class="logo" href="#">ROAMERS</a><div id="connection" class="status offline">● Offline</div></header>
 
-  <main id="top">
-    <section class="hero shell">
-      <div class="hero-copy">
-        <p class="eyebrow">GO SOMEWHERE NEW</p>
-        <h1>Find a place worth <em>roaming.</em></h1>
-        <p class="lede">Discover memorable destinations, save your favorites, and start planning your next adventure.</p>
-        <div class="search" role="search">
-          <span aria-hidden="true">⌕</span>
-          <input id="searchInput" type="search" placeholder="Search a city, country, or vibe..." autocomplete="off" />
-          <button id="searchBtn">Explore</button>
-        </div>
-      </div>
-      <div class="hero-card" aria-label="Featured destination">
-        <div class="hero-image" role="img" aria-label="Mountain lake landscape"></div>
-        <div class="hero-card-content"><span>FEATURED ESCAPE</span><strong>Himalayan mornings</strong><small>Uttarakhand · India</small></div>
+  <main>
+    <section id="joinScreen" class="screen active">
+      <div class="hero-art"><div class="pixel-sun"></div><div class="hill hill-a"></div><div class="hill hill-b"></div><div class="tree t1"></div><div class="tree t2"></div><div class="tree t3"></div></div>
+      <div class="join-card">
+        <p class="eyebrow">HIDE · HUNT · ROAM</p><h1>Roamers</h1><p class="sub">A tiny multiplayer game for your loudest friends.</p>
+        <label>Your name<input id="nameInput" maxlength="18" placeholder="e.g. Sonu" autocomplete="nickname"></label>
+        <div class="join-actions"><button id="createBtn" class="primary">Create Lobby</button><button id="showJoinBtn" class="secondary">Join Lobby</button></div>
+        <div id="codeBox" class="code-box hidden"><label>Room code<input id="codeInput" maxlength="6" placeholder="FOX42" autocapitalize="characters"></label><button id="joinBtn" class="primary">Join</button></div>
+        <button id="installBtn" class="install hidden">＋ Install Roamers</button>
       </div>
     </section>
 
-    <section class="shell section" id="discover">
-      <div class="section-head"><div><p class="eyebrow">EXPLORE</p><h2>Places for your next story</h2></div><span id="resultCount" class="muted"></span></div>
-      <div class="filters" role="group" aria-label="Destination filters">
-        <button class="filter active" data-filter="all">All</button>
-        <button class="filter" data-filter="mountains">Mountains</button>
-        <button class="filter" data-filter="beaches">Beaches</button>
-        <button class="filter" data-filter="cities">Cities</button>
-        <button class="filter" data-filter="nature">Nature</button>
-      </div>
-      <div class="grid" id="destinationGrid"></div>
-      <p class="empty" id="emptyState" hidden>No destinations match that search. Try another place or vibe.</p>
+    <section id="lobbyScreen" class="screen">
+      <div class="lobby-wrap"><div class="lobby-main"><div class="room-head"><div><p class="eyebrow">PRIVATE LOBBY</p><h2>Room <span id="roomCode">—</span></h2></div><button id="copyCode" class="secondary">Copy code</button></div>
+        <div class="players" id="players"></div>
+        <div id="hostSettings" class="settings"><h3>Round settings</h3><div class="setting-grid"><label>Role reveal <input id="hunterCountdown" type="number" min="5" max="30" value="15"><small>seconds</small></label><label>Hide phase <input id="hideDuration" type="number" min="10" max="60" value="15"><small>seconds</small></label><label>Hunt phase <input id="huntDuration" type="number" min="60" max="600" value="200"><small>seconds</small></label></div><button id="startBtn" class="primary wide">Start Game</button><p id="startHint" class="hint">Need at least 3 players to start.</p></div>
+      </div><aside class="chat"><div class="chat-head"><strong>Live comments</strong><span>public</span></div><div id="chatMessages" class="messages"></div><form id="chatForm"><input id="chatInput" maxlength="160" placeholder="Say something…"><button>➤</button></form></aside></div>
     </section>
 
-    <section class="shell planner" id="trips">
-      <div><p class="eyebrow">YOUR ROAM</p><h2>Build a trip as you discover.</h2><p>Save destinations now. Turn them into an itinerary when you're ready.</p></div>
-      <div class="saved" id="savedList"><span class="muted">Your saved places will appear here.</span></div>
-    </section>
+    <section id="gameScreen" class="screen game-screen"><div class="game-shell"><div class="game-hud"><div><span id="phaseLabel">HIDING</span><strong id="timer">00:15</strong></div><div id="roleBadge" class="role-badge">ROAMER</div><button id="chatToggle" class="chat-toggle">💬</button></div><canvas id="gameCanvas"></canvas><div id="waiting" class="waiting hidden"><p class="eyebrow">HUNT BEGINS SOON</p><h2>Keep talking.</h2><strong id="waitingTimer">15</strong><p>The Hunter can't see you yet.</p></div><div id="controls" class="controls"><div id="joystick" class="joystick"><div class="stick"></div></div><button id="fireBtn" class="fire hidden">HUNT</button></div><aside id="gameChat" class="chat game-chat"><div class="chat-head"><strong>Live comments</strong><span>public</span></div><div id="gameChatMessages" class="messages"></div><form id="gameChatForm"><input id="gameChatInput" maxlength="160" placeholder="Comment…"><button>➤</button></form></aside></div></section>
+
+    <section id="resultsScreen" class="screen"><div class="results"><p class="eyebrow">ROUND OVER</p><h1 id="resultTitle">Roamers Survive!</h1><p id="resultSub"></p><div id="timeline" class="timeline"></div><div class="result-actions"><button id="playAgain" class="primary">Play Again</button><button id="returnLobby" class="secondary">Return to Lobby</button></div><div class="result-chat chat"><div class="chat-head"><strong>Post-game comments</strong></div><div id="resultChatMessages" class="messages"></div><form id="resultChatForm"><input id="resultChatInput" maxlength="160" placeholder="React to the round…"><button>➤</button></form></div></div></section>
   </main>
-
-  <footer class="shell footer" id="about"><strong>Roamers</strong><span>Made for curious people.</span><span>© 2026</span></footer>
-  <script src="app.js"></script>
-</body>
-</html>
+</div>
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script><script src="app.js"></script>
+</body></html>
