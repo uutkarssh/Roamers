@@ -1,66 +1,43 @@
-const sprites=['🧑','👩','🧔','👧','👨','👩‍🎤','👴','👱‍♀️','🧑‍🦱','👩‍🦰','🧑‍🎨','🧑‍🚀'];
-const $=s=>document.querySelector(s), screens=['joinScreen','lobbyScreen','gameScreen','resultsScreen'];
-let socket=null,me=null,room=null,role='ROAMER',phase='lobby',phaseEndsAt=0,players=new Map(),chatLog=[],positions=new Map(),keys={},aim={x:1,y:0},localPos={x:.5,y:.5},deferredPrompt=null,lastChat=0;
+const $=s=>document.querySelector(s),screens=['joinScreen','lobbyScreen','gameScreen','resultsScreen'];
+let socket=null,me=null,room=null,role='ROAMER',phase='lobby',phaseEndsAt=0,players=new Map(),chatLog=[],positions=new Map(),keys={},aim={x:1,y:0},localPos={x:.5,y:.5},deferredPrompt=null,lastChat=0,soloMode=false,soloDummies=[],soloTimer=null;
 const show=id=>screens.forEach(x=>$('#'+x).classList.toggle('active',x===id));
-const nameEl=$('#nameInput'); nameEl.value=localStorage.getItem('roamers-name')||'';
+const nameEl=$('#nameInput');nameEl.value=localStorage.getItem('roamers-name')||'';
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').classList.remove('hidden')});
 $('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();deferredPrompt=null;$('#installBtn').classList.add('hidden')}};
 $('#showJoinBtn').onclick=()=>$('#codeBox').classList.remove('hidden');
 function ensureName(){const n=nameEl.value.trim();if(!n){nameEl.focus();return null}localStorage.setItem('roamers-name',n);return n}
-function setConnection(text,online=false){$('#connection').textContent=`● ${text}`;$('#connection').className=`status ${online?'online':'offline'}`}
-function connect(){
-  if(socket)return socket;
-  if(typeof io==='undefined'){setConnection('Offline');alert('The multiplayer client could not load. Please refresh after the new deployment finishes.');return null}
-  socket=io({reconnection:true,reconnectionAttempts:Infinity,reconnectionDelay:500,reconnectionDelayMax:5000,timeout:10000});
-  setConnection('Connecting');
-  socket.on('connect',()=>{
-    setConnection('Online',true);
-    if(room&&me)socket.emit('room:rejoin',{code:room.code,playerId:me.id});
-  });
-  socket.on('connect_error',()=>setConnection('Offline'));
-  socket.on('disconnect',()=>setConnection('Offline'));
-  bindSocket();
-  return socket;
-}
-function bindSocket(){
-  socket.on('room:state',state=>applyState(state));
-  socket.on('room:created',state=>applyState(state));
-  socket.on('room:joined',state=>applyState(state));
-  socket.on('room:error',e=>alert(e?.message||'Unable to join that room.'));
-  socket.on('game:roleAssigned',r=>{role=r.toUpperCase();$('#roleBadge').textContent=role;$('#roleBadge').style.background=role==='HUNTER'?'#9f3e36':'#24533f'});
-  socket.on('game:phaseChanged',d=>setPhase(d.phase,d.endsAt));
-  socket.on('player:positionUpdate',list=>{(Array.isArray(list)?list:Object.values(list)).forEach(p=>{positions.set(p.id,{x:p.x,y:p.y,tx:p.x,ty:p.y});if(p.id===me?.id)localPos={x:p.x,y:p.y}})});
-  socket.on('player:aimUpdate',d=>{aim={x:d.endX-d.startX,y:d.endY-d.startY};const l=Math.hypot(aim.x,aim.y)||1;aim.x/=l;aim.y/=l});
-  socket.on('player:eliminated',id=>{const p=players.get(id);if(p)p.status='eliminated';renderPlayers()});
-  socket.on('chat:message',m=>{chatLog.push(m);if(chatLog.length>200)chatLog.shift();renderChat()});
-  socket.on('game:ended',showResults);
-}
-function applyState(s){
-  room=s.room||s;
-  if(s.me){me=s.me;localStorage.setItem('roamers-player-id',me.id);}
-  if(s.players)players=new Map(s.players.map(p=>[p.id,p]));
-  if(s.chatLog)chatLog=s.chatLog;
-  $('#roomCode').textContent=room.code||'—';
-  renderPlayers();renderChat();
-  if(room.phase&&room.phase!=='lobby')phase=room.phase;
-  show('lobbyScreen');
-}
+function playerId(){let id=localStorage.getItem('roamers-player-id');if(!id){id=crypto.randomUUID();localStorage.setItem('roamers-player-id',id)}return id}
+function setConnection(text,online=false){$('#connection').textContent=text;$('#connection').className=`status ${online?'online':'offline'}`}
+function connect(){if(socket)return socket;if(typeof io==='undefined'){setConnection('Offline');return null}socket=io({reconnection:true,reconnectionAttempts:Infinity,reconnectionDelay:500,reconnectionDelayMax:5000,timeout:10000});setConnection('Connecting');socket.on('connect',()=>{setConnection('Online',true);if(room&&me)socket.emit('room:rejoin',{code:room.code,playerId:me.id})});socket.on('connect_error',()=>setConnection('Offline'));socket.on('disconnect',()=>setConnection('Offline'));bindSocket();return socket}
+function bindSocket(){socket.on('room:state',applyState);socket.on('room:created',applyState);socket.on('room:joined',applyState);socket.on('room:error',e=>alert(e?.message||'Unable to join that room.'));socket.on('game:roleAssigned',r=>{role=r.toUpperCase();$('#roleBadge').textContent=role;$('#roleBadge').style.background=role==='HUNTER'?'#9f3e36':'#24533f'});socket.on('game:phaseChanged',d=>setPhase(d.phase,d.endsAt));socket.on('player:positionUpdate',list=>{(Array.isArray(list)?list:Object.values(list)).forEach(p=>{positions.set(p.id,{x:p.x,y:p.y,tx:p.x,ty:p.y});if(p.id===me?.id)localPos={x:p.x,y:p.y}})});socket.on('player:eliminated',id=>{const p=players.get(id);if(p)p.status='eliminated';renderPlayers()});socket.on('chat:message',m=>{chatLog.push(m);if(chatLog.length>200)chatLog.shift();renderChat()});socket.on('game:ended',showResults)}
+function applyState(s){room=s.room||s;if(s.me){me=s.me;localStorage.setItem('roamers-player-id',me.id)}if(s.players)players=new Map(s.players.map(p=>[p.id,p]));if(s.chatLog)chatLog=s.chatLog;$('#roomCode').textContent=room.code||'—';renderPlayers();renderChat();show('lobbyScreen')}
 $('#createBtn').onclick=()=>{const n=ensureName();if(!n)return;const s=connect();if(s)s.emit('room:create',{name:n,playerId:localStorage.getItem('roamers-player-id')||null})};
 $('#joinBtn').onclick=()=>{const n=ensureName(),code=$('#codeInput').value.trim().toUpperCase();if(!n||!code)return;const s=connect();if(s)s.emit('room:join',{code,name:n,playerId:localStorage.getItem('roamers-player-id')||null})};
-$('#copyCode').onclick=async()=>{if(room?.code)await navigator.clipboard?.writeText(room.code);$('#copyCode').textContent='Copied!';setTimeout(()=>$('#copyCode').textContent='Copy code',1200)};
-function renderPlayers(){const el=$('#players');el.innerHTML=[...players.values()].map((p,i)=>`<div class="player"><div class="avatar">${sprites[p.spriteIndex??i%sprites.length]}</div><strong>${esc(p.name)}</strong>${p.id===room?.hostId?'<small>HOST</small>':''}${p.status==='eliminated'?'<small>OUT</small>':''}</div>`).join('');$('#startHint').textContent=players.size<3?'Need at least 3 players to start.':`${players.size} players ready.`;}
+$('#soloBtn').onclick=()=>startSolo(ensureName());
+$('#copyCode').onclick=async()=>{if(room?.code)await navigator.clipboard?.writeText(room.code);$('#copyCode').textContent='Copied';setTimeout(()=>$('#copyCode').textContent='Copy code',1200)};
+function renderPlayers(){const el=$('#players');el.innerHTML=[...players.values()].map((p,i)=>`<div class="player"><div class="avatar" aria-hidden="true"></div><strong>${esc(p.name)}</strong>${p.id===room?.hostId?'<small>HOST</small>':''}${p.status==='eliminated'?'<small>OUT</small>':''}</div>`).join('');$('#startHint').textContent=players.size<3?'Need at least 3 players to start.':`${players.size} players ready.`}
 function renderChat(){['chatMessages','gameChatMessages','resultChatMessages'].forEach(id=>{const el=$('#'+id);if(!el)return;el.innerHTML=chatLog.map(m=>`<div class="message"><b>${esc(m.name||'Player')}:</b> ${esc(m.text)}</div>`).join('');el.scrollTop=el.scrollHeight})}
-function sendChat(input){const text=input.value.trim();if(!text||Date.now()-lastChat<1500)return;lastChat=Date.now();input.value='';if(socket?.connected)socket.emit('chat:message',{text});else{chatLog.push({name:me?.name||nameEl.value,text});renderChat()}}
+function sendChat(input){const text=input.value.trim();if(!text||Date.now()-lastChat<500)return;lastChat=Date.now();input.value='';if(soloMode){chatLog.push({name:me?.name||nameEl.value,text});if(chatLog.length>100)chatLog.shift();renderChat();return}if(socket?.connected)socket.emit('chat:message',{text})}
 [['chatForm','chatInput'],['gameChatForm','gameChatInput'],['resultChatForm','resultChatInput']].forEach(([f,i])=>$('#'+f).onsubmit=e=>{e.preventDefault();sendChat($('#'+i))});
 $('#startBtn').onclick=()=>{if(socket)socket.emit('game:start',{hunterCountdown:+$('#hunterCountdown').value,hidePhaseDuration:+$('#hideDuration').value,huntPhaseDuration:+$('#huntDuration').value})};
-function setPhase(p,ends){phase=p;phaseEndsAt=ends||0;if(p==='role_reveal'||p==='hiding'||p==='hunting'){show('gameScreen');$('#waiting').classList.toggle('hidden',p!=='hiding'||role!=='HUNTER');$('#fireBtn').classList.toggle('hidden',!(p==='hunting'&&role==='HUNTER'));$('#phaseLabel').textContent=p.replace('_',' ').toUpperCase()}if(p==='lobby')show('lobbyScreen');}
-function showResults(r={}){phase='results';show('resultsScreen');$('#resultTitle').textContent=r.result==='hunter_win'?'Hunter Wins!':'Roamers Survive!';$('#resultSub').textContent=r.summary||'Round complete.';$('#timeline').innerHTML=(r.eliminations||[]).map((x,i)=>`<div><strong>${i+1}. ${esc(x.name||x.playerId)}</strong> — ${x.timeRemaining??''}s remaining</div>`).join('')}
-$('#playAgain').onclick=()=>socket?.emit('game:playAgain');$('#returnLobby').onclick=()=>socket?.emit('game:returnLobby');
+function setPhase(p,ends){phase=p;phaseEndsAt=ends||0;if(p==='role_reveal'||p==='hiding'||p==='hunting'){show('gameScreen');$('#waiting').classList.toggle('hidden',!(p==='hiding'&&role==='HUNTER'));$('#fireBtn').classList.toggle('hidden',!(p==='hunting'&&role==='HUNTER'));$('#phaseLabel').textContent=p.replace('_',' ').toUpperCase()}if(p==='lobby')show('lobbyScreen')}
+function showResults(r={}){phase='results';phaseEndsAt=0;show('resultsScreen');$('#resultTitle').textContent=r.result==='hunter_win'?'Hunter Wins!':'Roamers Survive!';$('#resultSub').textContent=r.summary||'Round complete.';$('#timeline').innerHTML=(r.eliminations||[]).map((x,i)=>`<div><strong>${i+1}. ${esc(x.name||x.playerId)}</strong> — ${x.timeRemaining??''}s remaining</div>`).join('')}
+$('#playAgain').onclick=()=>soloMode?startSolo(me?.name):socket?.emit('game:playAgain');
+$('#returnLobby').onclick=()=>{if(soloMode){stopSolo();show('joinScreen');setConnection('Offline')}else socket?.emit('game:returnLobby')};
 $('#chatToggle').onclick=()=>$('#gameChat').classList.toggle('open');
 const canvas=$('#gameCanvas'),ctx=canvas.getContext('2d');function resize(){canvas.width=innerWidth*devicePixelRatio;canvas.height=(innerHeight-62)*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}addEventListener('resize',resize);resize();
-function draw(){const w=innerWidth,h=innerHeight-62;ctx.clearRect(0,0,w,h);ctx.fillStyle='#86a982';ctx.fillRect(0,0,w,h);ctx.fillStyle='#6f8e69';for(let x=0;x<w;x+=70)for(let y=0;y<h;y+=70){ctx.fillRect(x+12,y+10,42,35);ctx.fillStyle='#779575';ctx.fillRect(x+20,y+47,55,16);ctx.fillStyle='#6f8e69'}ctx.fillStyle='#c9b27d';ctx.fillRect(w*.05,h*.42,w*.9,42);ctx.fillStyle='#315e48';for(let i=0;i<16;i++){const x=(i*137)%w,y=(i*83)%h;ctx.beginPath();ctx.arc(x,y,18,0,7);ctx.fill()}const ps=[...positions.entries()];ps.forEach(([id,p],i)=>{const x=p.x*w,y=p.y*h;ctx.globalAlpha=players.get(id)?.status==='eliminated'?.35:1;ctx.fillStyle=id===me?.id?'#df7041':'#f4ead4';ctx.fillRect(x-12,y-16,24,28);ctx.fillStyle='#17251e';ctx.fillRect(x-8,y-12,16,8);ctx.globalAlpha=1});if(role==='HUNTER'&&phase==='hunting'){const x=localPos.x*w,y=localPos.y*h;ctx.save();ctx.setLineDash([12,8]);ctx.strokeStyle='#e85b45';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+aim.x*w,y+aim.y*h);ctx.stroke();ctx.restore()}requestAnimationFrame(draw)}draw();
-function move(){let x=(keys.d||keys.ArrowRight?1:0)-(keys.a||keys.ArrowLeft?1:0),y=(keys.s||keys.ArrowDown?1:0)-(keys.w||keys.ArrowUp?1:0);if(!x&&!y)return;const l=Math.hypot(x,y);x/=l;y/=l;localPos.x=Math.max(.03,Math.min(.97,localPos.x+x*.012));localPos.y=Math.max(.06,Math.min(.94,localPos.y+y*.012));if(socket)socket.emit('player:move',{dx:x,dy:y})}addEventListener('keydown',e=>{keys[e.key]=true;if(e.key===' ')$('#fireBtn').click()});addEventListener('keyup',e=>keys[e.key]=false);setInterval(move,100);
-$('#fireBtn').onclick=()=>socket?.emit('player:eliminate');
-let joy=false;$('#joystick').addEventListener('pointerdown',e=>{joy=true;$('#joystick').setPointerCapture(e.pointerId)});$('#joystick').addEventListener('pointermove',e=>{if(!joy)return;const r=$('#joystick').getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),l=Math.hypot(dx,dy)||1;keys.d=dx>18;keys.a=dx<-18;keys.s=dy>18;keys.w=dy<-18});$('#joystick').addEventListener('pointerup',()=>{joy=false;keys={}});
-setInterval(()=>{if(phaseEndsAt){const s=Math.max(0,Math.ceil((phaseEndsAt-Date.now())/1000));$('#timer').textContent=`00:${String(s).padStart(2,'0')}`;$('#waitingTimer').textContent=s}},250);function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function draw(){const w=innerWidth,h=innerHeight-62;ctx.clearRect(0,0,w,h);ctx.fillStyle='#86a982';ctx.fillRect(0,0,w,h);ctx.fillStyle='#6f8e69';for(let x=0;x<w;x+=70)for(let y=0;y<h;y+=70){ctx.fillRect(x+12,y+10,42,35);ctx.fillStyle='#779575';ctx.fillRect(x+20,y+47,55,16);ctx.fillStyle='#6f8e69'}ctx.fillStyle='#c9b27d';ctx.fillRect(w*.05,h*.42,w*.9,42);ctx.fillStyle='#315e48';for(let i=0;i<16;i++){const x=(i*137)%w,y=(i*83)%h;ctx.beginPath();ctx.arc(x,y,18,0,7);ctx.fill()}for(const [id,p] of positions){const x=p.x*w,y=p.y*h;ctx.globalAlpha=players.get(id)?.status==='eliminated'?.35:1;ctx.fillStyle=id===me?.id?'#df7041':'#f4ead4';ctx.fillRect(x-12,y-16,24,28);ctx.fillStyle='#17251e';ctx.fillRect(x-8,y-12,16,8);ctx.globalAlpha=1}if(role==='HUNTER'&&phase==='hunting'){const x=localPos.x*w,y=localPos.y*h;ctx.save();ctx.setLineDash([12,8]);ctx.strokeStyle='#e85b45';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+aim.x*w*.35,y+aim.y*h*.35);ctx.stroke();ctx.restore()}requestAnimationFrame(draw)}draw();
+function move(){let x=(keys.d||keys.ArrowRight?1:0)-(keys.a||keys.ArrowLeft?1:0),y=(keys.s||keys.ArrowDown?1:0)-(keys.w||keys.ArrowUp?1:0);if(!x&&!y)return;const l=Math.hypot(x,y);x/=l;y/=l;localPos.x=Math.max(.03,Math.min(.97,localPos.x+x*.012));localPos.y=Math.max(.06,Math.min(.94,localPos.y+y*.012));if(soloMode)positions.set(me.id,{x:localPos.x,y:localPos.y});else if(socket)socket.emit('player:move',{dx:x,dy:y})}
+addEventListener('keydown',e=>{keys[e.key]=true;if(e.key===' ')$('#fireBtn').click()});addEventListener('keyup',e=>keys[e.key]=false);setInterval(move,100);
+$('#fireBtn').onclick=()=>{if(soloMode)soloHunt();else socket?.emit('player:eliminate')};
+let joy=false;$('#joystick').addEventListener('pointerdown',e=>{joy=true;$('#joystick').setPointerCapture(e.pointerId)});$('#joystick').addEventListener('pointermove',e=>{if(!joy)return;const r=$('#joystick').getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);keys.d=dx>18;keys.a=dx<-18;keys.s=dy>18;keys.w=dy<-18});$('#joystick').addEventListener('pointerup',()=>{joy=false;keys={}});
+setInterval(()=>{if(phaseEndsAt){const s=Math.max(0,Math.ceil((phaseEndsAt-Date.now())/1000));$('#timer').textContent=`00:${String(s).padStart(2,'0')}`;$('#waitingTimer').textContent=s}},250);
+function startSolo(n){if(!n)return;stopSolo();soloMode=true;me={id:'solo-'+playerId(),name:n};room={code:'SOLO',hostId:me.id};role='HUNTER';phase='role_reveal';chatLog=[];players=new Map();positions=new Map();soloDummies=[];localPos={x:.18,y:.5};players.set(me.id,{id:me.id,name:n,role:'HUNTER',status:'alive'});positions.set(me.id,{x:localPos.x,y:localPos.y});for(let i=0;i<5;i++){const id=`dummy-${i}`;const p={id,name:`Practice Roamer ${i+1}`,role:'ROAMER',status:'alive'};players.set(id,p);const x=.28+(i%3)*.22,y=.2+Math.floor(i/3)*.38;positions.set(id,{x,y});soloDummies.push({id,x,y,targetX:x,targetY:y,nextChange:0})}$('#roleBadge').textContent='HUNTER';$('#roleBadge').style.background='#9f3e36';$('#phaseLabel').textContent='ROLE REVEAL';$('#fireBtn').classList.add('hidden');$('#waiting').classList.add('hidden');$('#gameChat').classList.remove('open');show('gameScreen');setConnection('Solo');soloPhase('role_reveal',3)}
+function soloPhase(name,seconds){phase=name;phaseEndsAt=Date.now()+seconds*1000;$('#phaseLabel').textContent=name.replace('_',' ').toUpperCase();$('#fireBtn').classList.toggle('hidden',name!=='hunting');$('#waiting').classList.toggle('hidden',name!=='hiding');clearTimeout(soloTimer);soloTimer=setTimeout(()=>{if(name==='role_reveal')soloPhase('hiding',5);else if(name==='hiding')soloPhase('hunting',120);else soloFinish()},seconds*1000)}
+function soloHunt(){if(phase!=='hunting')return;let best=null,bestDist=Infinity;for(const d of soloDummies){if(players.get(d.id)?.status==='eliminated')continue;const dx=d.x-localPos.x,dy=d.y-localPos.y,dist=Math.hypot(dx,dy),dot=(dx*aim.x+dy*aim.y)/(dist||1);if(dot>.72&&dist<.34&&dist<bestDist){best=d;bestDist=dist}}if(best){players.get(best.id).status='eliminated';renderPlayers();if(soloDummies.every(d=>players.get(d.id)?.status==='eliminated'))soloFinish()}}
+function updateSolo(){if(!soloMode||phase!=='hunting')return;const now=Date.now();for(const d of soloDummies){if(players.get(d.id)?.status==='eliminated')continue;if(now>d.nextChange){d.targetX=Math.max(.08,Math.min(.92,d.targetX+(Math.random()-.5)*.25));d.targetY=Math.max(.12,Math.min(.88,d.targetY+(Math.random()-.5)*.25));d.nextChange=now+700+Math.random()*1200}d.x+=(d.targetX-d.x)*.018;d.y+=(d.targetY-d.y)*.018;positions.set(d.id,{x:d.x,y:d.y})}}
+setInterval(updateSolo,50);
+function soloFinish(){const alive=soloDummies.filter(d=>players.get(d.id)?.status!=='eliminated').length;showResults({result:alive?'roamer_win':'hunter_win',summary:alive?`${alive} practice roamers escaped.`:'All practice roamers were caught.',eliminations:soloDummies.filter(d=>players.get(d.id)?.status==='eliminated').map((d,i)=>({name:players.get(d.id)?.name,timeRemaining:0}))})}
+function stopSolo(){clearTimeout(soloTimer);soloTimer=null;soloMode=false;soloDummies=[]}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
